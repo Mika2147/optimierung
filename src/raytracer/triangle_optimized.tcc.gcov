@@ -1,0 +1,241 @@
+        -:    0:Source:triangle.tcc
+        -:    0:Graph:raytracer.gcno
+        -:    0:Data:raytracer.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:// A Triangle in 3-dimensional euclidian space with 
+        -:    2:// three edges and normal vectors.
+        -:    3:// The normal vectors have to point away from the surface of the Triangle.
+        -:    4:// The orientation is clockwise order
+        -:    5:#define OPTIMIZE_EARLY_BREAK
+        -:    6:#define OPTIMIZE_LESS_SQRT
+        -:    7:
+        -:    8:template <class T>
+        -:    9:class Triangle {
+        -:   10:
+        -:   11:public:
+        -:   12:  Vector<T, 3> p1, p2, p3; // edges
+        -:   13:  Vector<T, 3> n1, n2, n3; // normals
+        -:   14:
+    #####:   15:  Triangle(Vector<T, 3> p1, Vector<T, 3>p2, Vector<T, 3>p3 ) 
+    #####:   16:    : p1(p1), p2(p2), p3(p3) {
+        -:   17:/*
+        -:   18: clockwise order
+        -:   19:   p2
+        -:   20:  /  \
+        -:   21: p1---p3
+        -:   22:
+        -:   23:(face points away)
+        -:   24:*/
+    #####:   25:    n1 = cross_product(p2  - p1, p3 - p1); 
+    #####:   26:    n1.normalize();
+    #####:   27:    n2 = n1;
+    #####:   28:    n3 = n1;
+    #####:   29:  }
+        -:   30:
+     6320:   31:  Triangle(Vector<T, 3> p1, Vector<T, 3>p2, Vector<T, 3>p3,
+        -:   32:           Vector<T, 3> n1, Vector<T, 3>n2, Vector<T, 3>n3) 
+     6320:   33:    : p1(p1), p2(p2), p3(p3), n1(n1), n2(n2), n3(n3) {
+     6320:   34:    n1.normalize();
+     6320:   35:    n2.normalize();
+     6320:   36:    n3.normalize();
+     6320:   37: }
+        -:   38:
+        -:   39:#if !defined(OPTIMIZE_EARLY_BREAK) && !defined(OPTIMIZE_LESS_SQRT) 
+        -:   40:// returns true if this Triangle intersects with a ray given by  a origin and the direction of the ray. 
+        -:   41:// it also calculates:
+        -:   42:// the parameter value t for the intersection = origin + t * direction.
+        -:   43:// the u-v-Parameters for the barycentric coordinates (u,v,w) of the 
+        -:   44:// intersection point with w = 1 - u - v.
+        -:   45://  minimum_t contains the parametic value s for the current nearest triangle (not used in this unoptimized version)
+        -:   46:  bool intersects(Vector<T,3> origin, Vector<T,3> direction,
+        -:   47:                   FLOAT &t, FLOAT &u, FLOAT &v, FLOAT minimum_t = INFINITY) {
+        -:   48:    Vector<T, 3> normal =  cross_product(p2 - p1, p3  - p1);
+        -:   49:    
+        -:   50:    T normalRayProduct = normal.scalar_product( direction );
+        -:   51:    T area = normal.length(); // used for u-v-parameter calculation
+        -:   52:
+        -:   53:    if ( fabs(normalRayProduct) < EPSILON ) {
+        -:   54:      return false;
+        -:   55:    }
+        -:   56:
+        -:   57:    T d = normal.scalar_product( p1 );
+        -:   58:    t = (d - normal.scalar_product( origin ) ) / normalRayProduct;
+        -:   59:
+        -:   60:    if ( t < 0.0) {
+        -:   61:      return false;
+        -:   62:    }
+        -:   63:   
+        -:   64:    Vector<T, 3> intersection = origin + t * direction;
+        -:   65:   
+        -:   66:    Vector<T, 3> vector = cross_product(p2 - p1,  intersection - p1 );
+        -:   67:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:   68:      return false;
+        -:   69:    }
+        -:   70:
+        -:   71:    vector = cross_product(p3 - p2,  intersection - p2 );
+        -:   72:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:   73:      return false;
+        -:   74:    }
+        -:   75:
+        -:   76:    u = vector.length()  / area;
+        -:   77:
+        -:   78:
+        -:   79:    vector = cross_product(p1 - p3, intersection - p3 );
+        -:   80:    if (normal.scalar_product(vector) < 0.0 ) {
+        -:   81:      return false;
+        -:   82:    }
+        -:   83:
+        -:   84:    v = vector.length() / area;
+        -:   85:
+        -:   86:    return true;
+        -:   87:  }
+        -:   88:#elif defined(OPTIMIZE_EARLY_BREAK) && !defined(OPTIMIZE_LESS_SQRT)
+        -:   89:bool intersects(Vector<T,3> origin, Vector<T,3> direction,
+        -:   90:                   FLOAT &t, FLOAT &u, FLOAT &v, FLOAT minimum_t = INFINITY) {
+        -:   91:    Vector<T, 3> normal =  cross_product(p2 - p1, p3  - p1);
+        -:   92:    
+        -:   93:    T normalRayProduct = normal.scalar_product( direction );
+        -:   94:    T area = normal.length(); // used for u-v-parameter calculation
+        -:   95:
+        -:   96:    if ( fabs(normalRayProduct) < EPSILON ) {
+        -:   97:      return false;
+        -:   98:    }
+        -:   99:
+        -:  100:    T d = normal.scalar_product( p1 );
+        -:  101:    t = (d - normal.scalar_product( origin ) ) / normalRayProduct;
+        -:  102:
+        -:  103:    if ( t < 0.0 || t > minimum_t) {
+        -:  104:      return false;
+        -:  105:    }
+        -:  106:   
+        -:  107:    Vector<T, 3> intersection = origin + t * direction;
+        -:  108:   
+        -:  109:    Vector<T, 3> vector = cross_product(p2 - p1,  intersection - p1 );
+        -:  110:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:  111:      return false;
+        -:  112:    }
+        -:  113:
+        -:  114:    
+        -:  115:    vector = cross_product(p3 - p2,  intersection - p2 );
+        -:  116:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:  117:      return false;
+        -:  118:    }
+        -:  119:
+        -:  120:    u = vector.length()  / area;
+        -:  121:
+        -:  122:
+        -:  123:    vector = cross_product(p1 - p3, intersection - p3 );
+        -:  124:    if (normal.scalar_product(vector) < 0.0 ) {
+        -:  125:      return false;
+        -:  126:    }
+        -:  127:
+        -:  128:    v = vector.length() / area;
+        -:  129:
+        -:  130:    return true;
+        -:  131:  }
+        -:  132:#elif !defined(OPTIMIZE_EARLY_BREAK) && defined(OPTIMIZE_LESS_SQRT) 
+        -:  133:bool intersects(Vector<T,3> origin, Vector<T,3> direction,
+        -:  134:                   FLOAT &t, FLOAT &u, FLOAT &v, FLOAT minimum_t) {
+        -:  135:    // from here
+        -:  136:    // TODO: your code
+        -:  137:    // to here
+        -:  138:    Vector<T, 3> normal =  cross_product(p2 - p1, p3  - p1);
+        -:  139:
+        -:  140:    T normalRayProduct = normal.scalar_product( direction );
+        -:  141:
+        -:  142:    if ( fabs(normalRayProduct) < EPSILON ) {
+        -:  143:      return false;
+        -:  144:    }
+        -:  145:
+        -:  146:    T d = normal.scalar_product( p1 );
+        -:  147:    t = (d - normal.scalar_product( origin ) ) / normalRayProduct;
+        -:  148:
+        -:  149:    if ( t < 0.0) {
+        -:  150:      return false;
+        -:  151:    }
+        -:  152:   
+        -:  153:    Vector<T, 3> intersection = origin + t * direction;
+        -:  154:   
+        -:  155:    Vector<T, 3> vector = cross_product(p2 - p1,  intersection - p1 );
+        -:  156:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:  157:      return false;
+        -:  158:    }
+        -:  159:
+        -:  160:    
+        -:  161:    vector = cross_product(p3 - p2,  intersection - p2 );
+        -:  162:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:  163:      return false;
+        -:  164:    }
+        -:  165:
+        -:  166:    T square_area = normal.square_of_length(); // used for u-v-parameter calculation
+        -:  167:    T square_u = vector.square_of_length();
+        -:  168:
+        -:  169:    //T square_u = vector.square_of_length();
+        -:  170:
+        -:  171:    vector = cross_product(p1 - p3, intersection - p3 );
+        -:  172:    if (normal.scalar_product(vector) < 0.0 ) {
+        -:  173:      return false;
+        -:  174:    }
+        -:  175:
+        -:  176:    T square_v = vector.square_of_length();
+        -:  177:
+        -:  178:    u = sqrt(square_u / square_area);
+        -:  179:    v = sqrt(square_v / square_area);
+        -:  180:
+        -:  181:    return true;
+        -:  182:  }
+        -:  183:#else   
+        -:  184:
+        -:  185:// optimized version
+519950720:  186:bool intersects(Vector<T,3> origin, Vector<T,3> direction,
+        -:  187:                   FLOAT &t, FLOAT &u, FLOAT &v, FLOAT minimum_t) {
+        -:  188:    // from here
+        -:  189:    // TODO: your code
+        -:  190:    // to here
+519950720:  191:    Vector<T, 3> normal =  cross_product(p2 - p1, p3  - p1);
+        -:  192:
+        -:  193:    T normalRayProduct = normal.scalar_product( direction );
+        -:  194:
+519950720:  195:    if ( fabs(normalRayProduct) < EPSILON ) {
+        -:  196:      return false;
+        -:  197:    }
+        -:  198:
+        -:  199:    T d = normal.scalar_product( p1 );
+519950711:  200:    t = (d - normal.scalar_product( origin ) ) / normalRayProduct;
+        -:  201:
+519950711:  202:    if ( t < 0.0 || t > minimum_t) {
+        -:  203:      return false;
+        -:  204:    }
+        -:  205:   
+413970453:  206:    Vector<T, 3> intersection = origin + t * direction;
+        -:  207:   
+413970453:  208:    Vector<T, 3> vector = cross_product(p2 - p1,  intersection - p1 );
+413970453:  209:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:  210:      return false;
+        -:  211:    }
+        -:  212:
+210496532:  213:    vector = cross_product(p3 - p2,  intersection - p2 );
+210496532:  214:    if ( normal.scalar_product(vector) < 0.0 ) { 
+        -:  215:      return false;
+        -:  216:    }
+        -:  217:
+        -:  218:    T square_area = normal.square_of_length(); // used for u-v-parameter calculation
+        -:  219:    T square_u = vector.square_of_length();
+        -:  220:
+104877228:  221:    vector = cross_product(p1 - p3, intersection - p3 );
+104877228:  222:    if (normal.scalar_product(vector) < 0.0 ) {
+        -:  223:      return false;
+        -:  224:    }
+        -:  225:
+        -:  226:    T square_v = vector.square_of_length();
+        -:  227:
+    35294:  228:    u = sqrt(square_u / square_area);
+    35294:  229:    v = sqrt(square_v / square_area);
+        -:  230:
+    35294:  231:    return true;
+        -:  232:  }
+        -:  233:#endif
+        -:  234:
+        -:  235:};
+        -:  236:
