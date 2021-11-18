@@ -1,1 +1,8 @@
 *.pdf
+*.out
+*.o
+*.gcov
+*.gprof
+*.gcda
+*.gcno
+*.iml
