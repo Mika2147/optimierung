@@ -54,14 +54,11 @@ void sqrt2(float * __restrict__ a, float * __restrict__ root) {
 template <size_t LOOPS = 2>
 void v4sf_sqrt(v4sf *  __restrict__  a, v4sf *  __restrict__  root) {
   
-  int *ai = reinterpret_cast<int *>(a);
-  int *ri = reinterpret_cast<int *>(root);
+  v4si *ai = reinterpret_cast<v4si *>(a);
+  v4si *ri = reinterpret_cast<v4si *>(root);
 
-  *(ri + 0) = (1 << 29) + (*(ai + 0) >> 1) - (1 << 22) - 0x4C000;
-  *(ri + 1) = (1 << 29) + (*(ai + 1) >> 1) - (1 << 22) - 0x4C000;
-  *(ri + 2) = (1 << 29) + (*(ai + 2) >> 1) - (1 << 22) - 0x4C000;
-  *(ri + 3) = (1 << 29) + (*(ai + 3) >> 1) - (1 << 22) - 0x4C000;
-
+  *(ri) = (1 << 29) + (*(ai) >> 1) - (1 << 22) - 0x4C000;
+  
   root = reinterpret_cast<v4sf *>(ri);
 
   for(unsigned int i=0; i < LOOPS; i++){
