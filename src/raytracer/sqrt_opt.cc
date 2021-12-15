@@ -7,7 +7,8 @@
 #include <random>
 #include "measure_time.h"
 #include "sqrt_opt.h"
-//#define PRINT_DEBUG_SQRT_1
+//#define PRINT_DEBUG_SQRT_1_1
+//#define PRINT_DEBUG_SQRT_1_2
 //#define PRINT_DEBUG_SQRT_2
 //#define PRINT_DEBUG_SQRT_3
 
@@ -51,7 +52,7 @@ void measure_sqrt_time(void) {
     for (int j = 0; j < LOOP; j++) {
       for (int i = 0; i < 4 * N; i++) {
         roots[i] = sqrt1<LOOPS>(floats + i);
-        #ifdef PRINT_DEBUG_SQRT_1
+        #ifdef PRINT_DEBUG_SQRT_1_1
         std::cout << roots[i] << " is squareroot of " << *(floats + i) << "\n";
         #endif
       }
@@ -67,6 +68,9 @@ void measure_sqrt_time(void) {
       for (int i = 0; i < 4 * N; i += 4) {
         for (int k = 0; k < 4; k++) {
           roots[i + k] = sqrt1<LOOPS>(floats + i + k);
+          #ifdef PRINT_DEBUG_SQRT_1_2
+          std::cout << roots[i] << " is squareroot of " << *(floats + i) << "\n";
+          #endif
         }
       }
     }    

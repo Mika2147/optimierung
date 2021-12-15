@@ -14,6 +14,8 @@ class BoundingBox {
 private:
   // returns true iff v is contained in this bounding box
   bool contains(Vector<FLOAT, 3> v);
+  // returns the index of the longest edge along the box
+  int getLongestEdgeIndex();
 public:
   // the default constructor creates an uninitialized bounding box
   BoundingBox();
