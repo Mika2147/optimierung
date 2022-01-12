@@ -313,7 +313,7 @@ bool hasNearestTriangle(const Ray<FLOAT> & ray, Triangle<FLOAT> *  & nearest_tri
     bool intersect = triangle->intersects(ray.getOrigin(), ray.getDirection(), t, u, v, minimum_t);
     if ( intersect ) {
       stats.no_ray_triangle_intersections_found++;          
-      if ( (nearest_triangle == nullptr)  ||/*needed?*/ (t < minimum_t) ) {      
+      if ( (nearest_triangle == nullptr)  || (t < minimum_t) ) {      
         minimum_t = t;
         minimum_u = u;
         minimum_v = v;
@@ -516,7 +516,6 @@ int main(int argc, char *argv[]) {
                  Vector<FLOAT, 3>( {  0.0, 1.6, 0.0} ),
                  Vector<FLOAT, 3>( {  1.6, 0.0,  0.0} ),
                  screen );
-
   stats.time_start();
 #ifndef USE_KDTREE
   raytrace(camera, scene, screen);

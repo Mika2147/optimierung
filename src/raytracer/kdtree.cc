@@ -11,17 +11,16 @@ void BoundingBox::split(BoundingBox & left, BoundingBox & right) {
   // to here
   int longestEdgeIndex = getLongestEdgeIndex();
 
-  FLOAT center0 = min[0] + (max[0] - min[0]) / 2;
-  FLOAT center1 = min[1] + (max[1] - min[1]) / 2;
-  FLOAT center2 = min[2] + (max[2] - min[2]) / 2;
-
   if(longestEdgeIndex == 0){
+    FLOAT center0 = min[0] + (max[0] - min[0]) / 2;
     left = {{min[0], min[1], min[2]}, {center0, max[1], max[2]}};
     right = {{center0, min[1], min[2]}, {max[0], max[1], max[2]}};
   }else if(longestEdgeIndex == 1){
+    FLOAT center1 = min[1] + (max[1] - min[1]) / 2;
     left = {{min[0], min[1], min[2]}, {max[0], center1, max[2]}};
     right = {{min[0], center1, min[2]}, {max[0], max[1], max[2]}};
   }else {
+    FLOAT center2 = min[2] + (max[2] - min[2]) / 2;
     left = {{min[0], min[1], min[2]}, {max[0], max[1], center2}};
     right = {{min[0], min[1], center2}, {max[0], max[1], max[2]}};
   }
@@ -88,22 +87,20 @@ KDTree * KDTree::buildTree(KDTree * tree, std::vector< Triangle<FLOAT> *> & tria
   // from here
   // TODO: your code
   // to here
-  if(triangles.size() < (MAX_TRIANGLES_PER_LEAF + 1)){
+
+  if(triangles.size() < (MAX_TRIANGLES_PER_LEAF)){ 
     std::copy(triangles.begin(), triangles.end(), std::back_inserter(tree->triangles));
+    return tree;
   }
 
-  KDTree *left = {};
-  KDTree *right = {};
-  tree->box.split(left->box, right->box);
-
+  tree->left = new KDTree();
+  tree->right = new KDTree();
+  tree->box.split(tree->left->box, tree->right->box);
   std::vector<Triangle<FLOAT>*> leftTriangles = {};
   std::vector<Triangle<FLOAT>*> rightTriangles = {};
-
-  for(int i = 0; i < triangles.size(); i++){
-    Triangle<FLOAT> *triangle = triangles[i];
-    bool inLeft = left->box.contains(triangle);
-    bool inRight = right->box.contains(triangle);
-
+  for (Triangle<FLOAT> *triangle : triangles){
+    bool inLeft = tree->left->box.contains(triangle);
+    bool inRight = tree->right->box.contains(triangle);
     if(inLeft && inRight){
       tree->triangles.push_back(triangle);
     }else if(inLeft){
@@ -113,8 +110,8 @@ KDTree * KDTree::buildTree(KDTree * tree, std::vector< Triangle<FLOAT> *> & tria
     }
   }
 
-  left->buildTree(left, leftTriangles);
-  right->buildTree(right, rightTriangles);
+  tree->left->buildTree(tree->left, leftTriangles);
+  tree->right->buildTree(tree->right, rightTriangles);  
 
   return tree;
 }
@@ -126,14 +123,18 @@ KDTree *  KDTree::buildTree(std::vector< Triangle<FLOAT> *> & triangles)  {
   // to here
   Vector<FLOAT, 3> bbMin = {INFINITY, INFINITY, INFINITY};
   Vector<FLOAT, 3> bbMax = {-INFINITY, -INFINITY, -INFINITY};
-  for(int i = 0; i<triangles.size(); i++){
-    Triangle<FLOAT> *triangle = triangles[i];
-    for(int axis = 0; i < 3; i++){
-      bbMin[axis] = std::min(std::min(bbMin[axis], triangle->p1[axis]), std::min(triangle->p2[axis], triangle->p3[axis]));
-      bbMax[axis] = std::max(std::max(bbMin[axis], triangle->p1[axis]), std::max(triangle->p2[axis], triangle->p3[axis]));
+
+  for (Triangle<FLOAT> *triangle : triangles){
+    for(int axis = 0; axis < 3; axis++){
+      bbMin[axis] = std::min(bbMin[axis], triangle->p1[axis]);
+      bbMin[axis] = std::min(bbMin[axis], triangle->p2[axis]);
+      bbMin[axis] = std::min(bbMin[axis], triangle->p3[axis]);
+
+      bbMax[axis] = std::max(bbMax[axis], triangle->p1[axis]);
+      bbMax[axis] = std::max(bbMax[axis], triangle->p2[axis]);
+      bbMax[axis] = std::max(bbMax[axis], triangle->p3[axis]);
     }
   }
-
   root->box = {bbMin, bbMax};
 
   root->buildTree(root, triangles);
@@ -145,5 +146,42 @@ bool KDTree::hasNearestTriangle(Vector<FLOAT,3> eye, Vector<FLOAT,3> direction, 
   // from here
   // TODO: your code
   // to here
+
+  FLOAT minimum_u = 0.0;
+  FLOAT minimum_v = 0.0;
+
+  if(!this->box.intersects(eye, direction)){
+    return false;
+  }
+
+  if(this->left != nullptr && this->left->hasNearestTriangle(eye, direction, nearest_triangle, t, u, v, minimum_t)){
+    minimum_t = t;
+    minimum_u = u;
+    minimum_v = v;
+  }
+
+  if(this->right != nullptr && this->right->hasNearestTriangle(eye, direction, nearest_triangle, t, u, v, minimum_t)){
+    minimum_t = t;
+    minimum_u = u;
+    minimum_v = v;
+  }
+
+  for (Triangle<FLOAT> *triangle : this->triangles){
+    stats.no_ray_triangle_intersection_tests++;
+    if(triangle->intersects(eye, direction, t, u, v, minimum_t)){
+      stats.no_ray_triangle_intersections_found++;          
+      if(nearest_triangle == nullptr || t < minimum_t){
+        minimum_t = t;
+        minimum_u = u;
+        minimum_v = v;
+        nearest_triangle = triangle;
+      }
+    }
+  }
+
+  t = minimum_t;
+  u = minimum_u;
+  v = minimum_v;
+
   return nearest_triangle != nullptr;
 }
